@@ -13,4 +13,4 @@ spin = Spin()
 
 spin.S = 1
 
-print(s_plus(spin))
+print(s_z(spin))
