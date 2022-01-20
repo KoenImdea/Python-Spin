@@ -6,6 +6,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 
 Defenition of the Hamiltonians goes here
+For now WITHOUT the sparse matrix optimization
 """
 import numpy as np
 j = complex(0,1)
@@ -80,7 +81,7 @@ def s_arb(Spin, varargin):
     else:
         theta = varangin[0]
         phi = varangin[1]
-    e=expm(-j*s_y(Spin)*theta)*s_z(Spin)*expm(i*s_y(Spin)*theta)
+    e=expm(-j*s_y(Spin)*theta)*s_z(Spin)*expm(j*s_y(Spin)*theta)
     return expm(-j*s_z(Spin)*phi)*e*expm(j*s_z(Spin)*phi)
 
 def s_1(Spin):
@@ -116,3 +117,130 @@ def dmatrix(n):
     S = Spin()
     S.S=1/2
     return (1/2*s_1(S)+n[0]*s_x(S)+n[1]*s_y(S)+n[2]*s_z(S))
+
+
+"""
+////////////////////////////////////////////////////////////////////////////////
+// Basic spin operators for spin ensembles
+////////////////////////////////////////////////////////////////////////////////
+"""
+def s_xn(atoms):
+    """
+    //prepare the Sx matrix for an ensemble t of spins
+    //Szn([Fe,Co,...])
+    """
+    e = 0
+
+    for i in range(0, len(atoms)):
+        x = 1
+        for j in range(0, i):
+            x = x*s_1(atoms[j])
+
+        x = x*s_x(atoms[i])
+
+        for j in range(i+1, len(atoms)):
+            x = x*s_1(atoms[j])
+
+        e = e+x
+
+    return e
+
+def s_yn(atoms):
+    """
+    //prepare the Sy matrix for an ensemble t of spins
+    //Szn([Fe,Co,...])
+    """
+    e = 0
+
+    for i in range(0, len(atoms)):
+        x = 1
+        for j in range(0, i):
+            x = x*s_1(atoms[j])
+
+        x = x*s_y(atoms[i])
+
+        for j in range(i+1, len(atoms)):
+            x = x*s_1(atoms[j])
+
+        e = e+x
+
+    return e
+
+def s_zn(atoms):
+    """
+    //prepare the Sz matrix for an ensemble t of spins
+    //Szn([Fe,Co,...])
+    """
+    e = 0
+
+    for i in range(0, len(atoms)):
+        x = 1
+        for j in range(0, i):
+            x = x*s_1(atoms[j])
+
+        x = x*s_z(atoms[i])
+
+        for j in range(i+1, len(atoms)):
+            x = x*s_1(atoms[j])
+
+        e = e+x
+
+    return e
+
+def s_arbn(atoms, arg):
+    """
+    //prepare a S matrix with arbitary directions
+    //for an ensemble t of spins
+    //varargin must contain either the rotation angles theta and phi
+    //or the direction (x,y,z)
+    //Sarbn([Fe,Co,...],x,y,z)
+    """
+    if len(arg) == 3:
+        x = arg[0]
+        y = arg[1]
+        z = arg[2]
+        theta = np.arccos(z/np.sqrt(x**2+y**2+z**2))
+        if np.isnan(theta):
+            theta = 0
+        phi = np.arctan2(y,x)
+    else:
+        theta = arg[0]
+        phi = arg[1]
+
+    e = 0
+
+    for i in range(0, len(atoms)):
+        x = 1
+        for j in range(0, i):
+            x = x*s_1(atoms[j])
+
+        y = expm(-j*s_y(atoms[i])*theta)*s_z(atoms[i])*expm(j*s_y(atoms[i])*theta)
+        y = expm(-j*s_z(atoms[i])*phi)*y*expm(j*s_z(atoms[i])*phi)
+        y[np.abs(y) < 1E-10] = 0
+        x = x*y
+
+        for j in range(i+1, len(atoms)):
+            x = x*s_1(atoms[j])
+
+        e = e+x
+
+    return e
+
+
+def s_2n(atoms):
+    """
+    //prepare the S^2 matrix for an ensemble t of spins
+    //S2n([Fe
+    """
+    return s_xn(atoms)**2+s_yn(atoms)**2+s_zn(atoms)**2
+
+def s_rotn(atoms, phi, n):
+    """
+    // prepare the rotational matrix
+    // of the spin system S
+    // rotation angle phi
+    // rotational axis n (must have length 1)
+    """
+    e = expm(-j*phi*(s_xn(atoms)*n[0]+s_yn(atoms)*n[1]+s_zn(atoms)*n[2]))
+    e[np.abs(e) < 1E-10] = 0
+    return e
